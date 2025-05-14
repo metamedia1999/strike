@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ライブカメラ ストライクゾーン表示・判定アプリ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Tailwind bg-gray-100 */
+        }
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #000;
+            border-radius: 0.5rem; /* Tailwind rounded-lg */
+            overflow: hidden; /* Ensure canvas stays within rounded corners */
+            cursor: crosshair; /* クリック可能であることを示すカーソル */
+        }
+        #cameraFeed {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+        #strikeZoneCanvasLive {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .control-panel {
+            background-color: #ffffff;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .slider-container label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        .slider-container input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        .button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            text-align: center;
+        }
+        .button-primary {
+            background-color: #4f46e5;
+            color: white;
+        }
+        .button-primary:hover {
+            background-color: #4338ca;
+        }
+        .button-secondary {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+        .button-secondary:hover {
+            background-color: #d1d5db;
+        }
+        .message-box {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: 0.375rem;
+            text-align: center;
+        }
+        .message-box-error {
+            background-color: #fee2e2;
+            color: #b91c1c;
+        }
+        .message-box-info {
+            background-color: #e0e7ff;
+            color: #3730a3;
+        }
+        #judgmentResult {
+            padding: 0.75rem; /* Tailwind p-3 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            text-align: center;
+            font-weight: 600; /* Tailwind font-semibold */
+            min-height: 50px; /* 結果表示エリアの最低限の高さを確保 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .strike {
+            background-color: #d1fae5; /* Tailwind bg-green-100 */
+            color: #065f46; /* Tailwind text-green-700 */
+        }
+        .ball {
+            background-color: #fee2e2; /* Tailwind bg-red-100 */
+            color: #b91c1c; /* Tailwind text-red-700 */
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-3xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">ライブカメラ ストライクゾーン表示・判定アプリ</h1>
+            <p class="text-gray-600 mt-2">カメラ映像上でクリックした位置がストライクゾーン内か判定します。(背面カメラ優先)</p>
+        </header>
+
+        <div class="control-panel mb-6">
+            <button id="startCameraButton" class="button button-primary w-full">カメラを開始</button>
+            <div id="messageBoxLive" class="message-box" style="display: none;"></div>
+        </div>
+
+        <div id="cameraContainer" class="camera-container shadow-lg" style="display: none;">
+            <video id="cameraFeed" autoplay playsinline></video>
+            <canvas id="strikeZoneCanvasLive"></canvas>
+        </div>
+
+        <div id="controlsContainerLive" class="control-panel mt-6" style="display: none;">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">ストライクゾーン調整</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="slider-container">
+                    <label for="zoneXLive">X座標 (左端からの割合 %): <span id="zoneXValueLive">30</span>%</label>
+                    <input type="range" id="zoneXLive" min="0" max="100" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div class="slider-container">
+                    <label for="zoneYLive">Y座標 (上端からの割合 %): <span id="zoneYValueLive">30</span>%</label>
+                    <input type="range" id="zoneYLive" min="0" max="100" value="30" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div class="slider-container">
+                    <label for="zoneWidthLive">幅 (映像幅に対する割合 %): <span id="zoneWidthValueLive">25</span>%</label>
+                    <input type="range" id="zoneWidthLive" min="1" max="100" value="25" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+                <div class="slider-container">
+                    <label for="zoneHeightLive">高さ (映像高さに対する割合 %): <span id="zoneHeightValueLive">40</span>%</label>
+                    <input type="range" id="zoneHeightLive" min="1" max="100" value="40" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+            <div class="flex items-center space-x-3 mb-4">
+                <button id="toggleZoneButtonLive" class="button button-secondary">ストライクゾーンを隠す</button>
+                <label for="zoneColorLive" class="text-sm font-medium text-gray-700">ゾーンの色:</label>
+                <input type="color" id="zoneColorLive" value="#00FF00" class="w-10 h-10 border border-gray-300 rounded-md">
+            </div>
+            <div>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">判定エリア</h3>
+                <p class="text-sm text-gray-600 mb-3">カメラ映像内をクリックして、その位置がストライクゾーン内か判定します。</p>
+                <div id="judgmentResult" class="rounded-md text-center font-semibold">クリックして判定</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const startCameraButton = document.getElementById('startCameraButton');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const strikeZoneCanvasLive = document.getElementById('strikeZoneCanvasLive');
+        const cameraContainer = document.getElementById('cameraContainer');
+        const controlsContainerLive = document.getElementById('controlsContainerLive');
+        const messageBoxLive = document.getElementById('messageBoxLive');
+        const judgmentResultDiv = document.getElementById('judgmentResult');
+
+        const zoneXSliderLive = document.getElementById('zoneXLive');
+        const zoneYSliderLive = document.getElementById('zoneYLive');
+        const zoneWidthSliderLive = document.getElementById('zoneWidthLive');
+        const zoneHeightSliderLive = document.getElementById('zoneHeightLive');
+
+        const zoneXValueSpanLive = document.getElementById('zoneXValueLive');
+        const zoneYValueSpanLive = document.getElementById('zoneYValueLive');
+        const zoneWidthValueSpanLive = document.getElementById('zoneWidthValueLive');
+        const zoneHeightValueSpanLive = document.getElementById('zoneHeightValueLive');
+        const toggleZoneButtonLive = document.getElementById('toggleZoneButtonLive');
+        const zoneColorPickerLive = document.getElementById('zoneColorLive');
+
+        const ctxLive = strikeZoneCanvasLive.getContext('2d');
+        let zoneVisibleLive = true;
+        let stream = null;
+        let currentFacingMode = "environment";
+
+        let zoneParamsLive = {
+            x: 0.30, y: 0.30, width: 0.25, height: 0.40, color: '#00FF00'
+        };
+
+        function showMessageLive(message, type = 'info') {
+            messageBoxLive.textContent = message;
+            messageBoxLive.className = `message-box ${type === 'error' ? 'message-box-error' : 'message-box-info'}`;
+            messageBoxLive.style.display = 'block';
+        }
+
+        function hideMessageLive() {
+            messageBoxLive.style.display = 'none';
+        }
+
+        function drawStrikeZoneLive() {
+            if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) return;
+
+            strikeZoneCanvasLive.width = cameraFeed.videoWidth;
+            strikeZoneCanvasLive.height = cameraFeed.videoHeight;
+            
+            ctxLive.clearRect(0, 0, strikeZoneCanvasLive.width, strikeZoneCanvasLive.height);
+
+            if (!zoneVisibleLive) return;
+
+            const x = zoneParamsLive.x * strikeZoneCanvasLive.width;
+            const y = zoneParamsLive.y * strikeZoneCanvasLive.height;
+            const width = zoneParamsLive.width * strikeZoneCanvasLive.width;
+            const height = zoneParamsLive.height * strikeZoneCanvasLive.height;
+
+            ctxLive.strokeStyle = zoneParamsLive.color;
+            ctxLive.lineWidth = Math.max(2, Math.min(strikeZoneCanvasLive.width, strikeZoneCanvasLive.height) * 0.005);
+            ctxLive.strokeRect(x, y, width, height);
+        }
+        
+        function updateSliderValuesLive() {
+            zoneXValueSpanLive.textContent = zoneXSliderLive.value;
+            zoneYValueSpanLive.textContent = zoneYSliderLive.value;
+            zoneWidthValueSpanLive.textContent = zoneWidthSliderLive.value;
+            zoneHeightValueSpanLive.textContent = zoneHeightSliderLive.value;
+        }
+
+        function handleSliderChangeLive() {
+            zoneParamsLive.x = parseInt(zoneXSliderLive.value) / 100;
+            zoneParamsLive.y = parseInt(zoneYSliderLive.value) / 100;
+            zoneParamsLive.width = parseInt(zoneWidthSliderLive.value) / 100;
+            zoneParamsLive.height = parseInt(zoneHeightSliderLive.value) / 100;
+            updateSliderValuesLive();
+            drawStrikeZoneLive(); 
+        }
+
+        async function startOrSwitchCamera() {
+            hideMessageLive();
+            try {
+                if (stream) { 
+                    stream.getTracks().forEach(track => track.stop());
+                }
+                
+                const constraints = { video: { facingMode: currentFacingMode } };
+                console.log("Requesting camera with constraints:", constraints);
+
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                cameraFeed.srcObject = stream;
+
+                const actualSettings = stream.getVideoTracks()[0].getSettings();
+                if (actualSettings.facingMode === "user") {
+                    cameraFeed.style.transform = "scaleX(-1)";
+                    strikeZoneCanvasLive.style.transform = "scaleX(-1)";
+                } else {
+                    cameraFeed.style.transform = "none";
+                    strikeZoneCanvasLive.style.transform = "none";
+                }
+
+                cameraContainer.style.display = 'block';
+                controlsContainerLive.style.display = 'block';
+                startCameraButton.textContent = 'カメラを再起動';
+
+                cameraFeed.onloadedmetadata = () => {
+                    if (!cameraFeed.videoWidth || !cameraFeed.videoHeight) {
+                        console.warn("Video dimensions not available yet in onloadedmetadata.");
+                        // Fallback or retry mechanism might be needed if dimensions are 0
+                        // For now, we proceed, drawStrikeZoneLive has a guard for this.
+                    }
+                    strikeZoneCanvasLive.width = cameraFeed.videoWidth;
+                    strikeZoneCanvasLive.height = cameraFeed.videoHeight;
+                    
+                    zoneXSliderLive.value = zoneParamsLive.x * 100;
+                    zoneYSliderLive.value = zoneParamsLive.y * 100;
+                    zoneWidthSliderLive.value = zoneParamsLive.width * 100;
+                    zoneHeightSliderLive.value = zoneParamsLive.height * 100;
+                    updateSliderValuesLive();
+                    drawStrikeZoneLive();
+                    judgmentResultDiv.textContent = "クリックして判定"; // Reset judgment text
+                    judgmentResultDiv.className = "p-3 rounded-md text-center font-semibold"; // Reset class
+                };
+
+            } catch (err) {
+                console.error("カメラアクセスエラー:", err);
+                let message = "カメラにアクセスできませんでした。";
+                if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+                    message = "利用可能なカメラが見つかりません。";
+                } else if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+                    message = "カメラへのアクセスが拒否されました。ブラウザの設定でカメラの使用を許可してください。";
+                } else if (err.name === "OverconstrainedError" || err.name === "ConstraintNotSatisfiedError") {
+                    message = `指定されたカメラの制約（${currentFacingMode}カメラ）を満たせませんでした。`;
+                } else if (err.name === "NotReadableError") {
+                    message = "カメラが他のアプリケーションで使用中か、ハードウェアエラーが発生している可能性があります。";
+                }
+                showMessageLive(message, 'error');
+                cameraContainer.style.display = 'none';
+                controlsContainerLive.style.display = 'none';
+            }
+        }
+
+        // カメラ映像クリック時の判定処理
+        cameraFeed.addEventListener('click', function(event) {
+            if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) {
+                judgmentResultDiv.textContent = "カメラが起動していません";
+                judgmentResultDiv.className = "p-3 rounded-md text-center font-semibold ball"; // Use 'ball' class for error-like styling
+                return;
+            }
+
+            const rect = cameraFeed.getBoundingClientRect(); // video要素の表示上の位置とサイズ
+            const clickX_on_display = event.clientX - rect.left;
+            const clickY_on_display = event.clientY - rect.top;
+
+            // video要素の表示サイズと実際の解像度からスケールを計算
+            const scaleX = cameraFeed.videoWidth / cameraFeed.clientWidth;
+            const scaleY = cameraFeed.videoHeight / cameraFeed.clientHeight;
+
+            let actual_clickX_on_video_resolution = clickX_on_display * scaleX;
+            const actual_clickY_on_video_resolution = clickY_on_display * scaleY;
+
+            // 鏡像反転の場合のX座標補正
+            if (cameraFeed.style.transform === "scaleX(-1)") {
+                actual_clickX_on_video_resolution = cameraFeed.videoWidth - actual_clickX_on_video_resolution;
+            }
+
+            const clickedX_percent = actual_clickX_on_video_resolution / cameraFeed.videoWidth;
+            const clickedY_percent = actual_clickY_on_video_resolution / cameraFeed.videoHeight;
+
+            // ストライクゾーンの範囲
+            const zoneStartX = zoneParamsLive.x;
+            const zoneEndX = zoneParamsLive.x + zoneParamsLive.width;
+            const zoneStartY = zoneParamsLive.y;
+            const zoneEndY = zoneParamsLive.y + zoneParamsLive.height;
+
+            if (clickedX_percent >= zoneStartX && clickedX_percent <= zoneEndX &&
+                clickedY_percent >= zoneStartY && clickedY_percent <= zoneEndY) {
+                judgmentResultDiv.textContent = "ストライク！";
+                judgmentResultDiv.className = "p-3 rounded-md text-center font-semibold strike";
+            } else {
+                judgmentResultDiv.textContent = "ボール！";
+                judgmentResultDiv.className = "p-3 rounded-md text-center font-semibold ball";
+            }
+        });
+
+
+        startCameraButton.addEventListener('click', startOrSwitchCamera);
+        zoneXSliderLive.addEventListener('input', handleSliderChangeLive);
+        zoneYSliderLive.addEventListener('input', handleSliderChangeLive);
+        zoneWidthSliderLive.addEventListener('input', handleSliderChangeLive);
+        zoneHeightSliderLive.addEventListener('input', handleSliderChangeLive);
+        zoneColorPickerLive.addEventListener('input', function(event) {
+            zoneParamsLive.color = event.target.value;
+            drawStrikeZoneLive();
+        });
+        toggleZoneButtonLive.addEventListener('click', () => {
+            zoneVisibleLive = !zoneVisibleLive;
+            toggleZoneButtonLive.textContent = zoneVisibleLive ? 'ストライクゾーンを隠す' : 'ストライクゾーンを表示';
+            drawStrikeZoneLive();
+        });
+        
+        updateSliderValuesLive();
+
+    </script>
+</body>
+</html>
