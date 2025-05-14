@@ -260,7 +260,7 @@
                 ご利用にあたっての注意
             </h3>
             <ul class="list-disc list-inside space-y-1">
-                <li>本アプリを使用してSNS等へ投稿を行う場合、著作権で保護されたコンテンツ（試合映像など）の投稿はできません。許諾されたコンテンツなどを投稿する場合も取り扱いには十分ご注意ください。投稿に関する責任は利用者ご自身にあり、本アプリ提供者は一切の責任を負いません。関連法規及び各プラットフォームの規約を遵守し、ご自身の責任においてご利用ください。</li>
+                <li>本アプリを使用してSNS等へ投稿を行う場合、著作権で保護されたコンテンツ（試合映像など）の取り扱いには十分ご注意ください。投稿に関する責任は利用者ご自身にあり、本アプリ提供者は一切の責任を負いません。関連法規及び各プラットフォームの規約を遵守し、ご自身の責任においてご利用ください。</li>
                 <li>野球の試合映像等を撮影・利用する際は、必ず主催団体や球場等の定めるルールや許諾範囲、指示に従ってください。</li>
                 <li>本アプリは個人が楽しむ範囲（私的利用）でお使いください。</li>
                 <li>本アプリの判定は簡易的なものであり、公式記録や審判の判定に代わるものではありません。</li>
@@ -311,6 +311,7 @@
         let initialPinchDistance = 0;
         let initialZoneForPinch = {};
         let pinchCenterXPercent = 0, pinchCenterYPercent = 0;
+        let justFinishedTouchInteraction = false; // Flag to ignore click immediately after touch
 
 
         function showMessageLive(message, type = 'info') {
@@ -450,6 +451,8 @@
         cameraFeed.addEventListener('touchstart', function(event) {
             event.preventDefault(); 
             if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) return;
+            justFinishedTouchInteraction = false; // Reset flag on new touch start
+
 
             const coords = getTouchCoords(event);
 
@@ -520,18 +523,29 @@
         }, { passive: false });
 
         cameraFeed.addEventListener('touchend', function(event) {
+            // event.preventDefault(); // Usually not needed for touchend
+
+            if (isDragging || isPinching) {
+                justFinishedTouchInteraction = true;
+                // Reset the flag shortly after, so genuine clicks are not ignored
+                setTimeout(() => {
+                    justFinishedTouchInteraction = false;
+                }, 50); // 50ms delay, adjust if needed. This helps distinguish a tap from a drag/pinch end.
+            }
+
             if (event.touches.length < 2) isPinching = false;
             if (event.touches.length < 1) isDragging = false;
         });
         cameraFeed.addEventListener('touchcancel', function(event) {
             isDragging = false;
             isPinching = false;
+            justFinishedTouchInteraction = false; // Also reset on cancel
         });
 
         cameraFeed.addEventListener('click', function(event) {
-            if (isDragging || isPinching) { // If a touch interaction just finished, reset flags and don't process click
-                isDragging = false;
-                isPinching = false;
+            if (justFinishedTouchInteraction) {
+                // This click likely originated from a touch gesture ending, so ignore it.
+                // The flag will be reset by its own timeout or the next touchstart.
                 return;
             }
 
