@@ -2,13 +2,14 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"> <title>ストライクゾーンLIVE判定 - 野球ファンのためのカメラアプリ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ストライクゾーンLIVE判定 - 野球ファンのためのカメラアプリ</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Condensed:wght@700&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #eef2f7; /* より明るい背景色 */
+            background-color: #eef2f7;
             overscroll-behavior-y: contain;
         }
         .app-title {
@@ -21,16 +22,17 @@
             max-width: 800px;
             margin: 0 auto;
             background-color: #000;
-            border-radius: 0.75rem; /* 少し大きめの角丸 */
+            border-radius: 0.75rem;
             overflow: hidden;
-            cursor: crosshair;
+            /* cursor: crosshair; */ /*一旦タップ判定に集中するためコメントアウト */
             touch-action: none;
-            border: 3px solid #374151; /* 枠線を追加 */
+            border: 3px solid #374151;
         }
         #cameraFeed {
             display: block;
             width: 100%;
             height: auto;
+            /* pointer-events: auto; */ /* video要素がイベントを受け取れるように明示 */
         }
         #strikeZoneCanvasLive {
             position: absolute;
@@ -38,37 +40,37 @@
             left: 0;
             width: 100%;
             height: 100%;
-            pointer-events: none;
+            pointer-events: none; /* Canvasは操作を受け付けない */
         }
         .control-panel, .usage-panel, .notice-panel {
             background-color: #ffffff;
-            padding: 1.5rem; /* p-6 */
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .slider-container label {
             display: block;
             margin-bottom: 0.5rem;
-            font-weight: 500; /* font-medium */
-            color: #374151; /* text-gray-700 */
+            font-weight: 500;
+            color: #374151;
         }
         .slider-container input[type="range"] {
             width: 100%;
             cursor: pointer;
             -webkit-appearance: none;
             appearance: none;
-            height: 0.75rem; /* h-3 */
-            background: #d1d5db; /* bg-gray-300 */
-            border-radius: 9999px; /* rounded-full */
+            height: 0.75rem;
+            background: #d1d5db;
+            border-radius: 9999px;
             outline: none;
         }
         .slider-container input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
             appearance: none;
-            width: 1.5rem; /* w-6 */
-            height: 1.5rem; /* h-6 */
-            background: #4f46e5; /* bg-indigo-600 */
-            border-radius: 9999px; /* rounded-full */
+            width: 1.5rem;
+            height: 1.5rem;
+            background: #4f46e5;
+            border-radius: 9999px;
             cursor: pointer;
             box-shadow: 0 0 2px rgba(0,0,0,0.5);
         }
@@ -84,8 +86,8 @@
 
         .button {
             padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem; /* rounded-lg */
-            font-weight: 600; /* font-semibold */
+            border-radius: 0.5rem;
+            font-weight: 600;
             transition: all 0.2s ease-in-out;
             text-align: center;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -95,25 +97,25 @@
             box-shadow: 0 2px 3px rgba(0,0,0,0.1);
         }
         .button-primary {
-            background-color: #4f46e5; /* bg-indigo-600 */
+            background-color: #4f46e5;
             color: white;
         }
         .button-primary:hover {
-            background-color: #4338ca; /* hover:bg-indigo-700 */
+            background-color: #4338ca;
         }
         .button-secondary {
-            background-color: #e5e7eb; /* bg-gray-200 */
-            color: #374151; /* text-gray-700 */
+            background-color: #e5e7eb;
+            color: #374151;
         }
         .button-secondary:hover {
-            background-color: #d1d5db; /* hover:bg-gray-300 */
+            background-color: #d1d5db;
         }
         #judgmentResult {
-            padding: 1rem; /* p-4 */
-            border-radius: 0.5rem; /* rounded-lg */
+            padding: 1rem;
+            border-radius: 0.5rem;
             text-align: center;
-            font-size: 1.25rem; /* text-xl */
-            font-weight: 700; /* font-bold */
+            font-size: 1.25rem;
+            font-weight: 700;
             min-height: 60px;
             display: flex;
             align-items: center;
@@ -122,33 +124,33 @@
             border: 2px solid transparent;
         }
         .strike {
-            background-color: #c6f6d5; /* bg-green-200 (Tailwind v1 color, adjust if needed) */
-            color: #2f855a; /* text-green-700 */
-            border-color: #38a169; /* border-green-500 */
+            background-color: #c6f6d5;
+            color: #2f855a;
+            border-color: #38a169;
             transform: scale(1.05);
         }
         .ball {
-            background-color: #fed7d7; /* bg-red-200 */
-            color: #c53030; /* text-red-700 */
-            border-color: #e53e3e; /* border-red-500 */
+            background-color: #fed7d7;
+            color: #c53030;
+            border-color: #e53e3e;
             transform: scale(1.05);
         }
         .usage-step {
             display: flex;
             align-items: center;
-            margin-bottom: 0.75rem; /* mb-3 */
+            margin-bottom: 0.75rem;
         }
         .usage-step-icon {
-            width: 2rem; /* w-8 */
-            height: 2rem; /* h-8 */
-            margin-right: 0.75rem; /* mr-3 */
-            color: #4f46e5; /* text-indigo-600 */
+            width: 2rem;
+            height: 2rem;
+            margin-right: 0.75rem;
+            color: #4f46e5;
         }
         .panel-icon {
-             width: 1.75rem; /* w-7 */
-             height: 1.75rem; /* h-7 */
-             margin-right: 0.5rem; /* mr-2 */
-             color: #4a5568; /* text-gray-700 */
+             width: 1.75rem;
+             height: 1.75rem;
+             margin-right: 0.5rem;
+             color: #4a5568;
         }
     </style>
 </head>
@@ -202,7 +204,7 @@
             <div id="messageBoxLive" class="message-box" style="display: none;"></div>
         </div>
 
-        <div id="cameraContainer" class="camera-container shadow-2xl" style="display: none;"> {/* より強い影 */ }
+        <div id="cameraContainer" class="camera-container shadow-2xl" style="display: none;">
             <video id="cameraFeed" autoplay playsinline></video>
             <canvas id="strikeZoneCanvasLive"></canvas>
         </div>
@@ -311,7 +313,14 @@
         let initialPinchDistance = 0;
         let initialZoneForPinch = {};
         let pinchCenterXPercent = 0, pinchCenterYPercent = 0;
-        let justFinishedTouchInteraction = false; // Flag to ignore click immediately after touch
+        
+        // Tap detection variables
+        let touchStartTime = 0;
+        let touchStartClientX = 0;
+        let touchStartClientY = 0;
+        const MAX_TAP_DURATION = 300; // ms, Increased slightly
+        const MAX_TAP_MOVEMENT = 15;  // pixels, Increased slightly
+        let potentialTap = false; // Flag to indicate a touchstart could be a tap
 
 
         function showMessageLive(message, type = 'info') {
@@ -340,7 +349,6 @@
             const height = zoneParamsLive.height * strikeZoneCanvasLive.height;
 
             ctxLive.strokeStyle = zoneParamsLive.color;
-            // ゾーンの線の太さを少し太く、かつ見やすく調整
             ctxLive.lineWidth = Math.max(3, Math.min(strikeZoneCanvasLive.width, strikeZoneCanvasLive.height) * 0.007);
             ctxLive.strokeRect(x, y, width, height);
         }
@@ -425,130 +433,25 @@
             }
         }
 
-        function getTouchCoords(touchEvent) {
+        function getTouchCoordsAsPercentage(touch) { // Renamed for clarity
             const rect = cameraFeed.getBoundingClientRect();
-            const touches = touchEvent.touches;
-            let coords = [];
+            let x = touch.clientX - rect.left;
+            let y = touch.clientY - rect.top;
 
-            for (let i = 0; i < touches.length; i++) {
-                let x = touches[i].clientX - rect.left;
-                let y = touches[i].clientY - rect.top;
+            const scaleX = cameraFeed.videoWidth / cameraFeed.clientWidth;
+            const scaleY = cameraFeed.videoHeight / cameraFeed.clientHeight;
 
-                const scaleX = cameraFeed.videoWidth / cameraFeed.clientWidth;
-                const scaleY = cameraFeed.videoHeight / cameraFeed.clientHeight;
+            let videoX = x * scaleX;
+            const videoY = y * scaleY;
 
-                let videoX = x * scaleX;
-                const videoY = y * scaleY;
-
-                if (cameraFeed.style.transform === "scaleX(-1)") {
-                    videoX = cameraFeed.videoWidth - videoX;
-                }
-                coords.push({ x: videoX / cameraFeed.videoWidth, y: videoY / cameraFeed.videoHeight });
+            if (cameraFeed.style.transform === "scaleX(-1)") {
+                videoX = cameraFeed.videoWidth - videoX;
             }
-            return coords;
+            return { x: videoX / cameraFeed.videoWidth, y: videoY / cameraFeed.videoHeight };
         }
-
-        cameraFeed.addEventListener('touchstart', function(event) {
-            event.preventDefault(); 
-            if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) return;
-            justFinishedTouchInteraction = false; // Reset flag on new touch start
-
-
-            const coords = getTouchCoords(event);
-
-            if (coords.length === 1) {
-                isDragging = true;
-                isPinching = false; 
-                lastTouchX1 = coords[0].x;
-                lastTouchY1 = coords[0].y;
-            } else if (coords.length === 2) {
-                isPinching = true;
-                isDragging = false; 
-                initialPinchDistance = Math.hypot(coords[1].x - coords[0].x, coords[1].y - coords[0].y);
-                initialZoneForPinch = { ...zoneParamsLive }; 
-                pinchCenterXPercent = (coords[0].x + coords[1].x) / 2;
-                pinchCenterYPercent = (coords[0].y + coords[1].y) / 2;
-            }
-        }, { passive: false });
-
-        cameraFeed.addEventListener('touchmove', function(event) {
-            event.preventDefault();
-            if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) return;
-            
-            const coords = getTouchCoords(event);
-
-            if (isDragging && coords.length === 1) {
-                const dx = coords[0].x - lastTouchX1;
-                const dy = coords[0].y - lastTouchY1;
-
-                zoneParamsLive.x += dx;
-                zoneParamsLive.y += dy;
-
-                zoneParamsLive.x = Math.max(0, Math.min(zoneParamsLive.x, 1 - zoneParamsLive.width));
-                zoneParamsLive.y = Math.max(0, Math.min(zoneParamsLive.y, 1 - zoneParamsLive.height));
-
-                lastTouchX1 = coords[0].x;
-                lastTouchY1 = coords[0].y;
-
-                updateSliderValuesLive();
-                drawStrikeZoneLive();
-            } else if (isPinching && coords.length === 2) {
-                const currentPinchDistance = Math.hypot(coords[1].x - coords[0].x, coords[1].y - coords[0].y);
-                let scale = 1;
-                if (initialPinchDistance > 0.001) { 
-                     scale = currentPinchDistance / initialPinchDistance;
-                }
-
-                const newWidth = Math.max(0.01, Math.min(1, initialZoneForPinch.width * scale));
-                const newHeight = Math.max(0.01, Math.min(1, initialZoneForPinch.height * scale));
-
-                const currentPinchCenterX = (coords[0].x + coords[1].x) / 2;
-                const currentPinchCenterY = (coords[0].y + coords[1].y) / 2;
-
-                const relativePinchX = initialZoneForPinch.width > 0 ? (pinchCenterXPercent - initialZoneForPinch.x) / initialZoneForPinch.width : 0.5;
-                const relativePinchY = initialZoneForPinch.height > 0 ? (pinchCenterYPercent - initialZoneForPinch.y) / initialZoneForPinch.height : 0.5;
-                
-                zoneParamsLive.width = newWidth;
-                zoneParamsLive.height = newHeight;
-
-                zoneParamsLive.x = currentPinchCenterX - (newWidth * relativePinchX);
-                zoneParamsLive.y = currentPinchCenterY - (newHeight * relativePinchY);
-                
-                zoneParamsLive.x = Math.max(0, Math.min(zoneParamsLive.x, 1 - zoneParamsLive.width));
-                zoneParamsLive.y = Math.max(0, Math.min(zoneParamsLive.y, 1 - zoneParamsLive.height));
-                
-                updateSliderValuesLive();
-                drawStrikeZoneLive();
-            }
-        }, { passive: false });
-
-        cameraFeed.addEventListener('touchend', function(event) {
-            // event.preventDefault(); // Usually not needed for touchend
-
-            if (isDragging || isPinching) {
-                justFinishedTouchInteraction = true;
-                // Reset the flag shortly after, so genuine clicks are not ignored
-                setTimeout(() => {
-                    justFinishedTouchInteraction = false;
-                }, 50); // 50ms delay, adjust if needed. This helps distinguish a tap from a drag/pinch end.
-            }
-
-            if (event.touches.length < 2) isPinching = false;
-            if (event.touches.length < 1) isDragging = false;
-        });
-        cameraFeed.addEventListener('touchcancel', function(event) {
-            isDragging = false;
-            isPinching = false;
-            justFinishedTouchInteraction = false; // Also reset on cancel
-        });
-
-        cameraFeed.addEventListener('click', function(event) {
-            if (justFinishedTouchInteraction) {
-                // This click likely originated from a touch gesture ending, so ignore it.
-                // The flag will be reset by its own timeout or the next touchstart.
-                return;
-            }
-
+        
+        function performJudgment(clientX, clientY) {
+            console.log(`[performJudgment] Called with clientX: ${clientX}, clientY: ${clientY}`);
             if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) {
                 judgmentResultDiv.textContent = "カメラが起動していません";
                 judgmentResultDiv.className = "p-4 rounded-lg text-center font-bold ball";
@@ -556,8 +459,8 @@
             }
 
             const rect = cameraFeed.getBoundingClientRect();
-            const clickX_on_display = event.clientX - rect.left;
-            const clickY_on_display = event.clientY - rect.top;
+            const clickX_on_display = clientX - rect.left;
+            const clickY_on_display = clientY - rect.top;
 
             const scaleX = cameraFeed.videoWidth / cameraFeed.clientWidth;
             const scaleY = cameraFeed.videoHeight / cameraFeed.clientHeight;
@@ -572,6 +475,10 @@
             const clickedX_percent = actual_clickX_on_video_resolution / cameraFeed.videoWidth;
             const clickedY_percent = actual_clickY_on_video_resolution / cameraFeed.videoHeight;
 
+            console.log(`[performJudgment] Clicked percentages: x=${clickedX_percent.toFixed(3)}, y=${clickedY_percent.toFixed(3)}`);
+            console.log(`[performJudgment] Zone params: x=${zoneParamsLive.x.toFixed(3)}, y=${zoneParamsLive.y.toFixed(3)}, w=${zoneParamsLive.width.toFixed(3)}, h=${zoneParamsLive.height.toFixed(3)}`);
+
+
             const zoneStartX = zoneParamsLive.x;
             const zoneEndX = zoneParamsLive.x + zoneParamsLive.width;
             const zoneStartY = zoneParamsLive.y;
@@ -581,10 +488,194 @@
                 clickedY_percent >= zoneStartY && clickedY_percent <= zoneEndY) {
                 judgmentResultDiv.textContent = "ストライク！";
                 judgmentResultDiv.className = "p-4 rounded-lg text-center font-bold strike";
+                console.log("[performJudgment] Result: STRIKE");
             } else {
                 judgmentResultDiv.textContent = "ボール！";
                 judgmentResultDiv.className = "p-4 rounded-lg text-center font-bold ball";
+                console.log("[performJudgment] Result: BALL");
             }
+        }
+
+
+        cameraFeed.addEventListener('touchstart', function(event) {
+            // event.preventDefault(); // preventDefault は touchend でタップ判定する場合、ここでも必要
+            if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) return;
+            
+            console.log(`[touchstart] touches: ${event.touches.length}`);
+            potentialTap = true; // Assume it could be a tap until proven otherwise by movement or multiple touches
+
+            if (event.touches.length === 1) {
+                const touch = event.touches[0];
+                touchStartTime = new Date().getTime();
+                touchStartClientX = touch.clientX;
+                touchStartClientY = touch.clientY;
+
+                const coords = getTouchCoordsAsPercentage(touch);
+                lastTouchX1 = coords.x; // For dragging
+                lastTouchY1 = coords.y;
+                isDragging = true; // Assume dragging until touchmove or touchend clarifies
+                isPinching = false;
+                console.log(`[touchstart] Single touch started at client: (${touchStartClientX}, ${touchStartClientY}), video%: (${lastTouchX1.toFixed(3)}, ${lastTouchY1.toFixed(3)})`);
+            } else if (event.touches.length === 2) {
+                potentialTap = false; // Two fingers is not a tap for judgment
+                isPinching = true;
+                isDragging = false;
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                const coords1 = getTouchCoordsAsPercentage(touch1);
+                const coords2 = getTouchCoordsAsPercentage(touch2);
+
+                initialPinchDistance = Math.hypot(coords2.x - coords1.x, coords2.y - coords1.y);
+                initialZoneForPinch = { ...zoneParamsLive };
+                pinchCenterXPercent = (coords1.x + coords2.x) / 2;
+                pinchCenterYPercent = (coords1.y + coords2.y) / 2;
+                console.log("[touchstart] Pinch started.");
+            } else {
+                potentialTap = false; // More than 2 fingers, not a tap or supported gesture
+            }
+        }, { passive: false }); // passive: false to allow preventDefault if needed
+
+        cameraFeed.addEventListener('touchmove', function(event) {
+            // event.preventDefault(); // If you preventDefault here, it might interfere with scrolling if touch-action:none is not enough
+            if (!cameraFeed.srcObject || !cameraFeed.videoWidth || !cameraFeed.videoHeight) return;
+
+            if (event.touches.length === 1 && isDragging) { // Only process if dragging was initiated
+                const touch = event.touches[0];
+                // Check for significant movement to invalidate tap
+                if (potentialTap) {
+                    const moveX = Math.abs(touch.clientX - touchStartClientX);
+                    const moveY = Math.abs(touch.clientY - touchStartClientY);
+                    if (moveX > MAX_TAP_MOVEMENT || moveY > MAX_TAP_MOVEMENT) {
+                        console.log("[touchmove] Moved too much, not a tap.");
+                        potentialTap = false; // It's a drag, not a tap
+                    }
+                }
+                
+                // If it's still considered a drag (not invalidated as a tap that moved too much)
+                if (!potentialTap || (Math.abs(touch.clientX - touchStartClientX) > MAX_TAP_MOVEMENT || Math.abs(touch.clientY - touchStartClientY) > MAX_TAP_MOVEMENT)) {
+                    const coords = getTouchCoordsAsPercentage(touch);
+                    const dx = coords.x - lastTouchX1;
+                    const dy = coords.y - lastTouchY1;
+
+                    zoneParamsLive.x += dx;
+                    zoneParamsLive.y += dy;
+
+                    zoneParamsLive.x = Math.max(0, Math.min(zoneParamsLive.x, 1 - zoneParamsLive.width));
+                    zoneParamsLive.y = Math.max(0, Math.min(zoneParamsLive.y, 1 - zoneParamsLive.height));
+
+                    lastTouchX1 = coords.x;
+                    lastTouchY1 = coords.y;
+
+                    updateSliderValuesLive();
+                    drawStrikeZoneLive();
+                    // console.log("[touchmove] Dragging zone.");
+                }
+
+
+            } else if (event.touches.length === 2 && isPinching) {
+                potentialTap = false; // Pinching is not a tap
+                const touch1 = event.touches[0];
+                const touch2 = event.touches[1];
+                const coords1 = getTouchCoordsAsPercentage(touch1);
+                const coords2 = getTouchCoordsAsPercentage(touch2);
+
+                const currentPinchDistance = Math.hypot(coords2.x - coords1.x, coords2.y - coords1.y);
+                let scale = 1;
+                if (initialPinchDistance > 0.001) { 
+                     scale = currentPinchDistance / initialPinchDistance;
+                }
+
+                const newWidth = Math.max(0.01, Math.min(1, initialZoneForPinch.width * scale));
+                const newHeight = Math.max(0.01, Math.min(1, initialZoneForPinch.height * scale));
+
+                const currentPinchCenterX = (coords1.x + coords2.x) / 2;
+                const currentPinchCenterY = (coords1.y + coords2.y) / 2;
+
+                const relativePinchX = initialZoneForPinch.width > 0 ? (pinchCenterXPercent - initialZoneForPinch.x) / initialZoneForPinch.width : 0.5;
+                const relativePinchY = initialZoneForPinch.height > 0 ? (pinchCenterYPercent - initialZoneForPinch.y) / initialZoneForPinch.height : 0.5;
+                
+                zoneParamsLive.width = newWidth;
+                zoneParamsLive.height = newHeight;
+                zoneParamsLive.x = currentPinchCenterX - (newWidth * relativePinchX);
+                zoneParamsLive.y = currentPinchCenterY - (newHeight * relativePinchY);
+                
+                zoneParamsLive.x = Math.max(0, Math.min(zoneParamsLive.x, 1 - zoneParamsLive.width));
+                zoneParamsLive.y = Math.max(0, Math.min(zoneParamsLive.y, 1 - zoneParamsLive.height));
+                
+                updateSliderValuesLive();
+                drawStrikeZoneLive();
+                // console.log("[touchmove] Pinching zone.");
+            }
+        }, { passive: false }); // passive: false if you call preventDefault
+
+        cameraFeed.addEventListener('touchend', function(event) {
+            // event.preventDefault(); // Usually not needed
+            console.log(`[touchend] changedTouches: ${event.changedTouches.length}, touches: ${event.touches.length}, potentialTap: ${potentialTap}`);
+
+            if (potentialTap && event.changedTouches.length === 1) { // Only one finger lifted, and it was a potential tap
+                const touchEndTime = new Date().getTime();
+                const touchDuration = touchEndTime - touchStartTime;
+                
+                const liftedTouch = event.changedTouches[0];
+                const moveX = Math.abs(liftedTouch.clientX - touchStartClientX);
+                const moveY = Math.abs(liftedTouch.clientY - touchStartClientY);
+
+                console.log(`[touchend] Tap check: duration=${touchDuration}ms, moveX=${moveX.toFixed(2)}, moveY=${moveY.toFixed(2)}`);
+
+                if (touchDuration < MAX_TAP_DURATION && moveX < MAX_TAP_MOVEMENT && moveY < MAX_TAP_MOVEMENT) {
+                    console.log("[touchend] Tap detected! Performing judgment.");
+                    performJudgment(liftedTouch.clientX, liftedTouch.clientY);
+                    event.preventDefault(); // Prevent click event if tap is handled here
+                } else {
+                    console.log("[touchend] Not a tap (duration or movement exceeded).");
+                }
+            }
+
+            // Reset flags
+            if (event.touches.length < 2) isPinching = false;
+            if (event.touches.length < 1) isDragging = false;
+            potentialTap = false; // Reset potentialTap flag
+            console.log(`[touchend] Flags reset: isDragging=${isDragging}, isPinching=${isPinching}, potentialTap=${potentialTap}`);
+        });
+
+        cameraFeed.addEventListener('touchcancel', function(event) {
+            console.log("[touchcancel] Touch cancelled.");
+            isDragging = false;
+            isPinching = false;
+            potentialTap = false;
+        });
+
+        // Fallback click listener for mouse or if touchend doesn't preventDefault for click
+        cameraFeed.addEventListener('click', function(event) {
+            console.log("[click] Click event fired.");
+            // This check is to prevent click if a touchend recently handled a tap.
+            // However, relying on timing can be tricky. The preventDefault in touchend is better.
+            // If touchend's preventDefault works, this click event might not even fire for taps on mobile.
+            if (isDragging || isPinching) { // If somehow these flags are still true, it's not a simple click
+                 console.log("[click] Ignored due to active drag/pinch flags (should be rare).");
+                return;
+            }
+            // If potentialTap is true here, it means touchstart happened but touchend didn't register it as a tap
+            // or didn't prevent the click. This path is more for mouse clicks.
+            if (potentialTap) {
+                console.log("[click] potentialTap was true, but touchend didn't handle it as tap or prevent click. Resetting.");
+                potentialTap = false; // Reset it
+                // It's possible this is a "slow tap" that exceeded MAX_TAP_DURATION but was still a single touch.
+                // Or it's a click after a very short, non-moving touch that somehow wasn't caught by touchend.
+                // For safety, let's not proceed if it was a potential tap that wasn't "cleared" by movement.
+                // This helps avoid double judgment if touchend's tap detection is the primary.
+                // However, for pure mouse clicks, potentialTap will be false.
+                // This logic is tricky. The goal is: touchend handles taps. Click handles mouse clicks.
+                // If a touch event sequence did NOT result in performJudgment via touchend,
+                // AND a click event fires, then this click handler should process it.
+            }
+
+            // To avoid issues, let's only allow click to proceed if no touch events were recently involved in a complex way.
+            // A simple way: if it's a click and not a drag/pinch, proceed.
+            // The touchend handler should ideally `event.preventDefault()` on a successful tap
+            // to stop this click event from firing.
+            console.log("[click] Performing judgment via click handler (likely mouse or unhandled tap).");
+            performJudgment(event.clientX, event.clientY);
         });
 
         startCameraButton.addEventListener('click', startOrSwitchCamera);
